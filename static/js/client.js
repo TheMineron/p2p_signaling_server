@@ -252,21 +252,30 @@
         }
     }
 
-    async function initLocalMedia() {
-        try {
-            localStream = await navigator.mediaDevices.getUserMedia({video: true, audio: true});
-            addLocalVideoContainer(localStream);
-            localAudioEnabled = true;
-            localVideoEnabled = true;
-            updateMediaButtons();
-            for (const [, peerInfo] of peers.entries()) {
-                localStream.getTracks().forEach(track => peerInfo.pc.addTrack(track, localStream));
+async function initLocalMedia() {
+    try {
+        localStream = await navigator.mediaDevices.getUserMedia({video: true, audio: true});
+        addLocalVideoContainer(localStream);
+        localAudioEnabled = true;
+        localVideoEnabled = true;
+        updateMediaButtons();
+
+        // Добавляем треки во все уже существующие пиры и, если нужно, пересогласовываем
+        for (const [remoteId, peerInfo] of peers.entries()) {
+            localStream.getTracks().forEach(track => peerInfo.pc.addTrack(track, localStream));
+
+            // Если соединение уже установлено, отправляем новый offer
+            if (peerInfo.pc.signalingState === 'stable' && peerInfo.pc.remoteDescription) {
+                const offer = await peerInfo.pc.createOffer();
+                await peerInfo.pc.setLocalDescription(offer);
+                sendSignal(remoteId, { type: 'offer', sdp: offer.sdp });
             }
-        } catch (e) {
-            console.error('getUserMedia error:', e);
-            alert('Не удалось получить доступ к камере/микрофону');
         }
+    } catch (e) {
+        console.error('getUserMedia error:', e);
+        alert('Не удалось получить доступ к камере/микрофону');
     }
+}
 
     function addLocalVideoContainer(stream) {
         const container = document.createElement('div');
