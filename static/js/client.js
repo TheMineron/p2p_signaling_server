@@ -198,8 +198,10 @@
             case 'participant_updated':
                 if (participantsInfo.has(msg.participant_id)) {
                     const p = participantsInfo.get(msg.participant_id);
-                    if (msg.audio_enabled !== undefined && msg.audio_enabled !== null) p.audio_enabled = msg.audio_enabled;
-                    if (msg.video_enabled !== undefined && msg.video_enabled !== null) p.video_enabled = msg.video_enabled;
+                    if (msg.audio_enabled !== undefined && msg.audio_enabled !== null)
+                        p.audio_enabled = msg.audio_enabled;
+                    if (msg.video_enabled !== undefined && msg.video_enabled !== null)
+                        p.video_enabled = msg.video_enabled;
                     updateParticipantsUI();
                 }
                 break;
@@ -258,7 +260,7 @@
             localAudioEnabled = true;
             localVideoEnabled = true;
             updateMediaButtons();
-            for (const [remoteId, peerInfo] of peers.entries()) {
+            for (const [, peerInfo] of peers.entries()) {
                 localStream.getTracks().forEach(track => peerInfo.pc.addTrack(track, localStream));
             }
         } catch (e) {
@@ -420,13 +422,22 @@
         try {
             if (signalData.type === 'offer') {
                 await pc.setRemoteDescription(new RTCSessionDescription({type: 'offer', sdp: signalData.sdp}));
+                for (const cand of peerInfo.pendingCandidates) await pc.addIceCandidate(cand);
+                peerInfo.pendingCandidates = [];
                 const answer = await pc.createAnswer();
                 await pc.setLocalDescription(answer);
                 sendSignal(fromId, {type: 'answer', sdp: answer.sdp});
             } else if (signalData.type === 'answer') {
                 await pc.setRemoteDescription(new RTCSessionDescription({type: 'answer', sdp: signalData.sdp}));
+                for (const cand of peerInfo.pendingCandidates) await pc.addIceCandidate(cand);
+                peerInfo.pendingCandidates = [];
             } else if (signalData.type === 'ice-candidate' && signalData.candidate) {
-                await pc.addIceCandidate(new RTCIceCandidate(signalData.candidate));
+                const candidate = new RTCIceCandidate(signalData.candidate);
+                if (pc.remoteDescription) {
+                    await pc.addIceCandidate(candidate);
+                } else {
+                    peerInfo.pendingCandidates.push(candidate);
+                }
             }
         } catch (e) {
             console.error('Signal handling error:', e);
