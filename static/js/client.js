@@ -126,14 +126,10 @@
 
             case 'existing_participants':
                 msg.participants.forEach(p => {
-                    participantsInfo.set(p.id, {
-                        id: p.id,
-                        name: p.name,
-                        role: p.role,
-                        audio_enabled: p.audio_enabled,
-                        video_enabled: p.video_enabled,
-                        screen_share: false
-                    });
+                    participantsInfo.set(p.id, {...});
+
+                    const iOffer = (currentParticipantId < p.id);
+                    createPeerConnection(p.id, iOffer);
                 });
                 updateParticipantsUI();
                 break;
@@ -150,7 +146,8 @@
                     screen_share: false
                 });
                 updateParticipantsUI();
-                await createPeerConnection(msg.participant.id, true);
+                const iAmOfferer = (currentParticipantId < msg.participant.id);
+                await createPeerConnection(msg.participant.id, iAmOfferer);
                 break;
 
             case 'participant_left':
@@ -356,7 +353,11 @@
     }
 
     async function createPeerConnection(remoteId, isInitiator) {
-        if (peers.has(remoteId)) return;
+        if (peers.has(remoteId)) {
+            // Avoid duplicates – in a correct flow this should never happen
+            console.warn('[WebRTC] Peer already exists for', remoteId);
+            return;
+        }
         const pc = new RTCPeerConnection(pcConfig);
         const container = document.createElement('div');
         container.className = 'video-container';
@@ -377,7 +378,8 @@
             videoElement: video,
             container,
             stream: null,
-            pendingCandidates: []
+            pendingCandidates: [],
+            amOfferer: shouldCreateOffer,   // remember role
         };
         peers.set(remoteId, peerInfo);
 
