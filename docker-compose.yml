@@ -1,0 +1,46 @@
+services:
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    networks:
+      - signaling-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  signaling:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "${SIGNALING_PORT:-8000}:8000"
+    environment:
+      - REDIS_URL=${REDIS_URL}
+      - CHAT_HISTORY_SIZE=${CHAT_HISTORY_SIZE:-50}
+      - STUN_SERVER=${STUN_SERVER}
+      - TURN_SERVER=${TURN_SERVER}
+      - TURN_USERNAME=${TURN_USERNAME}
+      - TURN_CREDENTIAL=${TURN_CREDENTIAL}
+    depends_on:
+      - redis
+    networks:
+      - signaling-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 256M
+
+volumes:
+  redis_data:
+
+networks:
+  signaling-net:

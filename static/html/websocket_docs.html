@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WebSocket API документация</title>
+  <link rel="stylesheet" href="/static/css/websocket_docs.css">
+  <script src="/static/js/websocket_docs.js" defer></script>
+</head>
+<body>
+<div class="container">
+  <h1>WebSocket API сервера сигналинга</h1>
+  <p class="subtitle">Все сообщения обмениваются в формате JSON через WebSocket-соединение.
+    Обязательное поле <code>type</code> определяет тип команды.</p>
+
+  <div class="controls">
+    <input type="text" id="search" placeholder="Поиск по команде или описанию..." class="search-input">
+    <div class="filter-buttons">
+      <button data-group="all" class="active">Все</button>
+      <button data-group="connection">Подключение</button>
+      <button data-group="chat">Чат</button>
+      <button data-group="moderate">Модерация</button>
+      <button data-group="settings">Настройки</button>
+    </div>
+  </div>
+
+  <div class="commands-list">
+    {% for group, commands in groups.items() %}
+    <div class="command-group" data-group="{{ group }}">
+      <h2>{{ group }}</h2>
+      {% for cmd, meta in commands.items() %}
+      <div class="command-card" data-command="{{ cmd }}" data-description="{{ meta.description }}">
+        <div class="command-header">
+          <span class="command-name">{{ cmd }}</span>
+          <span class="command-direction">C→S</span>
+        </div>
+        <div class="command-description">{{ meta.description }}</div>
+
+        {% if meta.request_schema %}
+        <div class="schema-section">
+          <div class="schema-title">Запрос</div>
+          <pre class="schema-json">{{ meta.request_schema | pretty_json(indent=2) }}</pre>
+        </div>
+        {% endif %}
+
+        {% if meta.response_schemas %}
+        <div class="schema-section">
+          <div class="schema-title">Ответы / уведомления</div>
+          {% for resp_type, info in meta.response_schemas.items() %}
+          <div class="response-item">
+            <div class="response-type">{{ resp_type }}</div>
+            <div class="response-desc">{{ info.description }}</div>
+            <pre class="schema-json">{{ info.schema | pretty_json(indent=2) }}</pre>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if meta.docstring %}
+        <div class="docstring">
+          <div class="schema-title">Подробнее</div>
+          <div class="docstring-text">{{ meta.docstring }}</div>
+        </div>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    {% endfor %}
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,45 @@
+import logging
+
+from commands.chat.schemas import ChatUnpinRequest, ChatUnpinnedResponse
+from commands.register import register_handler
+from commands.schemas import ErrorResponse
+from database.crud.chat import unpin_message
+from utils import safe_send_json, broadcast_to_room, CommandContext, RoomParticipantPair
+
+logger = logging.getLogger(__name__)
+
+
+@register_handler(
+    "chat_unpin",
+    request_model=ChatUnpinRequest,
+    responses={
+        "chat_unpinned": (
+                ChatUnpinnedResponse,
+                "Сообщение откреплено (broadcast)"
+        ),
+        "error": (
+                ErrorResponse,
+                "Ошибка: нет прав модератора или отсутствует msg_id"
+        )
+    },
+    description="Открепление сообщения (только для модератора).",
+    group="chat"
+)
+async def handle_unpin_message(ctx: CommandContext, data: dict) -> RoomParticipantPair:
+    if not ctx.current_room or not ctx.current_participant:
+        return ctx.current_room, ctx.current_participant
+    if ctx.current_participant.role != "moderator":
+        await safe_send_json(ctx.websocket, data={
+            "type": "error",
+            "message": "Требуются права модератора"
+        })
+        return ctx.current_room, ctx.current_participant
+    msg_id = data.get("msg_id")
+    if not msg_id:
+        return ctx.current_room, ctx.current_participant
+    await unpin_message(ctx.current_room.id, msg_id)
+    await broadcast_to_room(ctx.current_room, message={
+        "type": "chat_unpinned",
+        "msg_id": msg_id
+    })
+    return ctx.current_room, ctx.current_participant

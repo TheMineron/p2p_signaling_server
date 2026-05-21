@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Видеоконференция с чатом</title>
+      <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+<div id="join-screen">
+    <h1>🚀 Войти в комнату</h1>
+    <div class="input-group">
+        <label>Никнейм</label>
+        <input type="text" id="nickname" placeholder="Ваше имя" autocomplete="off">
+    </div>
+    <div class="input-group">
+        <label>ID комнаты</label>
+        <input type="text" id="roomId" placeholder="Например: demo-room" autocomplete="off">
+    </div>
+    <div class="input-group">
+        <label>Пароль (если есть)</label>
+        <input type="password" id="roomPassword" placeholder="Оставьте пустым, если нет">
+    </div>
+    <button id="joinBtn">Присоединиться</button>
+</div>
+
+<div id="room-screen" style="display: none;">
+    <div class="main-area">
+        <div class="top-bar">
+            <div>
+                <span class="room-info" id="roomTitle"></span>
+                <span class="role-badge" id="roleBadge"></span>
+            </div>
+            <button class="leave-btn" id="leaveBtn">🚪 Выйти</button>
+        </div>
+        <div class="video-grid" id="videoGrid">
+            <!-- Видео контейнеры будут добавляться динамически -->
+        </div>
+        <div class="bottom-controls">
+            <button class="control-btn active" id="micBtn" title="Микрофон">🎤</button>
+            <button class="control-btn active" id="camBtn" title="Камера">📹</button>
+            <button class="control-btn" id="screenBtn" title="Демонстрация экрана">🖥️</button>
+            <button class="control-btn" id="settingsBtn" title="Настройки">⚙️</button>
+            <button class="control-btn" id="muteAllBtn" title="Mute All (модер)" style="display:none;">🔇</button>
+        </div>
+    </div>
+    <div class="sidebar">
+        <div class="sidebar-tabs">
+            <button class="tab-btn active" data-tab="chat">💬 Чат</button>
+            <button class="tab-btn" data-tab="participants">👥 Участники</button>
+        </div>
+        <div class="tab-content">
+            <div class="tab-panel active" id="chatPanel">
+                <div class="chat-messages" id="chatMessages"></div>
+                <div class="reply-preview" id="replyPreview" style="display:none;">
+                    <span id="replyText"></span>
+                    <span id="cancelReply">✖</span>
+                </div>
+                <div class="chat-input-area">
+                    <input type="text" id="chatInput" placeholder="Введите сообщение...">
+                    <button id="sendChatBtn">➤</button>
+                </div>
+            </div>
+            <div class="tab-panel" id="participantsPanel">
+                <div class="participants-list" id="participantsList"></div>
+            </div>
+        </div>
+    </div>
+</div>
+<script src="/static/js/client.js" defer></script>
+</body>
+</html>
