@@ -9,8 +9,22 @@ async def create_room(room_id: str) -> None:
 
 async def delete_room(room_id: str) -> None:
     await redis_client.srem("rooms", room_id)
-    await redis_client.delete(f"room:{room_id}:participants")
     await redis_client.delete(f"room:{room_id}:params")
+    participants = await redis_client.smembers(f"room:{room_id}:participants")
+    if participants:
+        pipe = redis_client.pipeline()
+        for pid in participants:
+            pipe.delete(f"participant:{pid}")
+        await pipe.execute()
+    await redis_client.delete(f"room:{room_id}:participants")
+    msg_ids = await redis_client.lrange(f"room:{room_id}:messages", 0, -1)
+    if msg_ids:
+        pipe = redis_client.pipeline()
+        for mid in msg_ids:
+            pipe.delete(f"room:{room_id}:msg:{mid}")
+        await pipe.execute()
+    await redis_client.delete(f"room:{room_id}:messages")
+    await redis_client.delete(f"room:{room_id}:pinned")
 
 
 async def get_room_params(room_id: str) -> dict:
