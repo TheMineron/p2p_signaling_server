@@ -252,30 +252,28 @@
         }
     }
 
-async function initLocalMedia() {
-    try {
-        localStream = await navigator.mediaDevices.getUserMedia({video: true, audio: true});
-        addLocalVideoContainer(localStream);
-        localAudioEnabled = true;
-        localVideoEnabled = true;
-        updateMediaButtons();
+    async function initLocalMedia() {
+        try {
+            localStream = await navigator.mediaDevices.getUserMedia({video: true, audio: true});
+            addLocalVideoContainer(localStream);
+            localAudioEnabled = true;
+            localVideoEnabled = true;
+            updateMediaButtons();
 
-        // Добавляем треки во все уже существующие пиры и, если нужно, пересогласовываем
-        for (const [remoteId, peerInfo] of peers.entries()) {
-            localStream.getTracks().forEach(track => peerInfo.pc.addTrack(track, localStream));
+            for (const [remoteId, peerInfo] of peers.entries()) {
+                localStream.getTracks().forEach(track => peerInfo.pc.addTrack(track, localStream));
 
-            // Если соединение уже установлено, отправляем новый offer
-            if (peerInfo.pc.signalingState === 'stable' && peerInfo.pc.remoteDescription) {
-                const offer = await peerInfo.pc.createOffer();
-                await peerInfo.pc.setLocalDescription(offer);
-                sendSignal(remoteId, { type: 'offer', sdp: offer.sdp });
+                if (peerInfo.pc.signalingState === 'stable' && peerInfo.pc.remoteDescription) {
+                    const offer = await peerInfo.pc.createOffer();
+                    await peerInfo.pc.setLocalDescription(offer);
+                    sendSignal(remoteId, {type: 'offer', sdp: offer.sdp});
+                }
             }
+        } catch (e) {
+            console.error('getUserMedia error:', e);
+            alert('Не удалось получить доступ к камере/микрофону');
         }
-    } catch (e) {
-        console.error('getUserMedia error:', e);
-        alert('Не удалось получить доступ к камере/микрофону');
     }
-}
 
     function addLocalVideoContainer(stream) {
         const container = document.createElement('div');
@@ -710,4 +708,52 @@ async function initLocalMedia() {
     setInterval(() => {
         if (ws && ws.readyState === WebSocket.OPEN) sendPing();
     }, 25000);
+
+    function updateVideoLayout() {
+        const grid = videoGrid;
+        if (!grid) return;
+
+        const containers = grid.querySelectorAll('.video-container');
+        const count = containers.length;
+        if (count === 0) return;
+
+        const gridWidth = grid.clientWidth;
+        const gridHeight = grid.clientHeight;
+        if (gridWidth === 0 || gridHeight === 0) return;
+
+        let bestCols = 1;
+        let bestWidth = 0;
+        let bestHeight = 0;
+
+        for (let cols = 1; cols <= count; cols++) {
+            const rows = Math.ceil(count / cols);
+            const cellWidth = Math.floor((gridWidth - (cols - 1) * 8) / cols);  // gap 0.5rem ≈ 8px
+            const cellHeight = Math.floor((gridHeight - (rows - 1) * 8) / rows);
+
+            const widthByHeight = cellHeight * 4 / 3;
+            const heightByWidth = cellWidth * 3 / 4;
+
+            const realWidth = Math.min(cellWidth, widthByHeight);
+            const realHeight = Math.min(cellHeight, heightByWidth);
+
+            const area = realWidth * realHeight;
+            if (area > bestWidth * bestHeight) {
+                bestCols = cols;
+                bestWidth = realWidth;
+                bestHeight = realHeight;
+            }
+        }
+
+        containers.forEach(container => {
+            container.style.width = bestWidth + 'px';
+            container.style.height = bestHeight + 'px';
+        });
+    }
+
+    const observer = new MutationObserver(updateVideoLayout);
+    observer.observe(videoGrid, {childList: true});
+
+    window.addEventListener('resize', updateVideoLayout);
 })();
+
+
