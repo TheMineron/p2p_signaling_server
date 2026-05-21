@@ -717,18 +717,30 @@
         const count = containers.length;
         if (count === 0) return;
 
-        const gridWidth = grid.clientWidth;
-        const gridHeight = grid.clientHeight;
-        if (gridWidth === 0 || gridHeight === 0) return;
+        const gridStyle = getComputedStyle(grid);
+        const paddingLeft = parseFloat(gridStyle.paddingLeft) || 0;
+        const paddingRight = parseFloat(gridStyle.paddingRight) || 0;
+        const paddingTop = parseFloat(gridStyle.paddingTop) || 0;
+        const paddingBottom = parseFloat(gridStyle.paddingBottom) || 0;
+        const gap = parseFloat(gridStyle.gap) || parseFloat(gridStyle.columnGap) || 8; // gap между элементами
+
+        const availableWidth = grid.clientWidth - paddingLeft - paddingRight;
+        const availableHeight = grid.clientHeight - paddingTop - paddingBottom;
+
+        if (availableWidth <= 0 || availableHeight <= 0) return;
 
         let bestCols = 1;
+        let bestArea = 0;
         let bestWidth = 0;
         let bestHeight = 0;
 
         for (let cols = 1; cols <= count; cols++) {
             const rows = Math.ceil(count / cols);
-            const cellWidth = Math.floor((gridWidth - (cols - 1) * 8) / cols);  // gap 0.5rem ≈ 8px
-            const cellHeight = Math.floor((gridHeight - (rows - 1) * 8) / rows);
+            const totalHGap = (cols - 1) * gap;
+            const totalVGap = (rows - 1) * gap;
+
+            const cellWidth = Math.floor((availableWidth - totalHGap) / cols);
+            const cellHeight = Math.floor((availableHeight - totalVGap) / rows);
 
             const widthByHeight = cellHeight * 4 / 3;
             const heightByWidth = cellWidth * 3 / 4;
@@ -737,7 +749,8 @@
             const realHeight = Math.min(cellHeight, heightByWidth);
 
             const area = realWidth * realHeight;
-            if (area > bestWidth * bestHeight) {
+            if (area > bestArea) {
+                bestArea = area;
                 bestCols = cols;
                 bestWidth = realWidth;
                 bestHeight = realHeight;

@@ -118,13 +118,14 @@ async def websocket_docs(request: Request):
         if group not in groups:
             groups[group] = {}
         groups[group][cmd] = meta
-    return templates.TemplateResponse(request,"websocket_docs.html", context={
+    return templates.TemplateResponse(request, "websocket_docs.html", context={
         "request": request,
         "groups": groups,
     })
 
 
 templates.env.filters['pretty_json'] = pretty_json
+
 
 async def main():
     cert_file = Path("cert.pem")
@@ -150,6 +151,7 @@ async def main():
     server = uvicorn.Server(config)
     logger.info(f"Signaling server starting on {proto}://0.0.0.0:8000")
     await server.serve()
+
 
 if __name__ == "__main__":
     asyncio.run(main())
