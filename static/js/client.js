@@ -748,7 +748,7 @@
             const realWidth = Math.min(cellWidth, widthByHeight);
             const realHeight = Math.min(cellHeight, heightByWidth);
 
-            const area = realWidth * realHeight;
+            const area = realWidth * realHeight * 0.8;
             if (area > bestArea) {
                 bestArea = area;
                 bestCols = cols;
