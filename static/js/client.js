@@ -357,109 +357,92 @@
     }
 
     async function createPeerConnection(remoteId, isInitiator) {
-    if (peers.has(remoteId)) return;
-    console.log(`[PC] Creating connection to ${remoteId}, initiator=${isInitiator}`);
+        if (peers.has(remoteId)) return;
+        const pc = new RTCPeerConnection(pcConfig);
+        const container = document.createElement('div');
+        container.className = 'video-container';
+        container.id = `remote-${remoteId}`;
+        const video = document.createElement('video');
+        video.autoplay = true;
+        video.playsInline = true;
+        container.appendChild(video);
+        const label = document.createElement('div');
+        label.className = 'participant-label';
+        const pInfo = participantsInfo.get(remoteId) || {name: remoteId.slice(0, 6)};
+        label.innerHTML = `<span>${pInfo.name}</span>`;
+        container.appendChild(label);
+        videoGrid.appendChild(container);
 
-    const pc = new RTCPeerConnection(pcConfig);
-    const container = document.createElement('div');
-    container.className = 'video-container';
-    container.id = `remote-${remoteId}`;
-    const video = document.createElement('video');
-    video.autoplay = true;
-    video.playsInline = true;
-    container.appendChild(video);
-    const label = document.createElement('div');
-    label.className = 'participant-label';
-    const pInfo = participantsInfo.get(remoteId) || { name: remoteId.slice(0, 6) };
-    label.innerHTML = `<span>${escapeHtml(pInfo.name)}</span>`;
-    container.appendChild(label);
-    videoGrid.appendChild(container);
+        const peerInfo = {pc, videoElement: video, container, stream: null};
+        peers.set(remoteId, peerInfo);
 
-    const peerInfo = {
-        pc,
-        videoElement: video,
-        container,
-        stream: null,
-        pendingCandidates: []
-    };
-    peers.set(remoteId, peerInfo);
-
-    if (localStream) {
-        localStream.getTracks().forEach(track => {
-            pc.addTrack(track, localStream);
-            console.log(`[PC] Added local ${track.kind} track to ${remoteId}`);
-        });
-    }
-
-    pc.onicecandidate = (event) => {
-        if (event.candidate) {
-            sendSignal(remoteId, { type: 'ice-candidate', candidate: event.candidate });
+        if (localStream) {
+            localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
         }
-    };
 
-    pc.ontrack = (event) => {
-        console.log(`[TRACK] Received ${event.track.kind} from ${remoteId}`);
-        if (peerInfo.videoElement.srcObject !== event.streams[0]) {
-            peerInfo.videoElement.srcObject = event.streams[0];
-            peerInfo.stream = event.streams[0];
-        }
-    };
+        pc.onicecandidate = (event) => {
+            if (event.candidate) {
+                sendSignal(remoteId, {type: 'ice-candidate', candidate: event.candidate});
+            }
+        };
 
-    pc.oniceconnectionstatechange = () => {
-        console.log(`[ICE] ${remoteId}: ${pc.iceConnectionState}`);
-        if (pc.iceConnectionState === 'disconnected' || pc.iceConnectionState === 'failed') {
-            removePeer(remoteId);
-        }
-    };
+        pc.ontrack = (event) => {
+            if (peerInfo.videoElement.srcObject !== event.streams[0]) {
+                peerInfo.videoElement.srcObject = event.streams[0];
+                peerInfo.stream = event.streams[0];
+            }
+        };
 
-    if (isInitiator) {
-        try {
-            const offer = await pc.createOffer();
-            await pc.setLocalDescription(offer);
-            sendSignal(remoteId, { type: 'offer', sdp: offer.sdp });
-        } catch (err) {
-            console.error(`[OFFER] ${remoteId} error:`, err);
+        pc.oniceconnectionstatechange = () => {
+            if (pc.iceConnectionState === 'disconnected' || pc.iceConnectionState === 'failed') {
+                removePeer(remoteId);
+            }
+        };
+
+        if (isInitiator) {
+            try {
+                const offer = await pc.createOffer();
+                await pc.setLocalDescription(offer);
+                sendSignal(remoteId, {type: 'offer', sdp: offer.sdp});
+            } catch (e) {
+                console.error('createOffer error:', e);
+            }
         }
     }
-}
 
     async function handleSignal(fromId, signalData) {
-    let peerInfo = peers.get(fromId);
-    if (!peerInfo && signalData.type === 'offer') {
-        await createPeerConnection(fromId, false);
-        peerInfo = peers.get(fromId);
-    }
-    if (!peerInfo) return;
-
-    const pc = peerInfo.pc;
-    try {
-        if (signalData.type === 'offer') {
-            await pc.setRemoteDescription(new RTCSessionDescription({ type: 'offer', sdp: signalData.sdp }));
-            for (const cand of peerInfo.pendingCandidates) {
-                await pc.addIceCandidate(cand);
-            }
-            peerInfo.pendingCandidates = [];
-            const answer = await pc.createAnswer();
-            await pc.setLocalDescription(answer);
-            sendSignal(fromId, { type: 'answer', sdp: answer.sdp });
-        } else if (signalData.type === 'answer') {
-            await pc.setRemoteDescription(new RTCSessionDescription({ type: 'answer', sdp: signalData.sdp }));
-            for (const cand of peerInfo.pendingCandidates) {
-                await pc.addIceCandidate(cand);
-            }
-            peerInfo.pendingCandidates = [];
-        } else if (signalData.type === 'ice-candidate' && signalData.candidate) {
-            const candidate = new RTCIceCandidate(signalData.candidate);
-            if (pc.remoteDescription) {
-                await pc.addIceCandidate(candidate);
-            } else {
-                peerInfo.pendingCandidates.push(candidate);
-            }
+        let peerInfo = peers.get(fromId);
+        if (!peerInfo && signalData.type === 'offer') {
+            await createPeerConnection(fromId, false);
+            peerInfo = peers.get(fromId);
         }
-    } catch (err) {
-        console.error(`[SIGNAL] Error handling from ${fromId}:`, err);
+        if (!peerInfo) return;
+
+        const pc = peerInfo.pc;
+        try {
+            if (signalData.type === 'offer') {
+                await pc.setRemoteDescription(new RTCSessionDescription({type: 'offer', sdp: signalData.sdp}));
+                for (const cand of peerInfo.pendingCandidates) await pc.addIceCandidate(cand);
+                peerInfo.pendingCandidates = [];
+                const answer = await pc.createAnswer();
+                await pc.setLocalDescription(answer);
+                sendSignal(fromId, {type: 'answer', sdp: answer.sdp});
+            } else if (signalData.type === 'answer') {
+                await pc.setRemoteDescription(new RTCSessionDescription({type: 'answer', sdp: signalData.sdp}));
+                for (const cand of peerInfo.pendingCandidates) await pc.addIceCandidate(cand);
+                peerInfo.pendingCandidates = [];
+            } else if (signalData.type === 'ice-candidate' && signalData.candidate) {
+                const candidate = new RTCIceCandidate(signalData.candidate);
+                if (pc.remoteDescription) {
+                    await pc.addIceCandidate(candidate);
+                } else {
+                    peerInfo.pendingCandidates.push(candidate);
+                }
+            }
+        } catch (e) {
+            console.error('Signal handling error:', e);
+        }
     }
-}
 
     function removePeer(remoteId) {
         const peerInfo = peers.get(remoteId);
