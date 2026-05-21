@@ -134,8 +134,6 @@
                         video_enabled: p.video_enabled,
                         screen_share: false
                     });
-                    const iOffer = (currentParticipantId < p.id);
-                    createPeerConnection(p.id, iOffer);
                 });
                 updateParticipantsUI();
                 break;
@@ -152,8 +150,7 @@
                     screen_share: false
                 });
                 updateParticipantsUI();
-                const iAmOfferer = (currentParticipantId < msg.participant.id);
-                await createPeerConnection(msg.participant.id, iAmOfferer);
+                await createPeerConnection(msg.participant.id, true);
                 break;
 
             case 'participant_left':
@@ -384,8 +381,7 @@
             videoElement: video,
             container,
             stream: null,
-            pendingCandidates: [],
-            amOfferer: shouldCreateOffer,   // remember role
+            pendingCandidates: []
         };
         peers.set(remoteId, peerInfo);
 
