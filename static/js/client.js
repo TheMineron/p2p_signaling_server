@@ -126,8 +126,14 @@
 
             case 'existing_participants':
                 msg.participants.forEach(p => {
-                    participantsInfo.set(p.id, {...});
-
+                    participantsInfo.set(p.id, {
+                        id: p.id,
+                        name: p.name,
+                        role: p.role,
+                        audio_enabled: p.audio_enabled,
+                        video_enabled: p.video_enabled,
+                        screen_share: false
+                    });
                     const iOffer = (currentParticipantId < p.id);
                     createPeerConnection(p.id, iOffer);
                 });
