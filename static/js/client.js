@@ -373,7 +373,13 @@
         container.appendChild(label);
         videoGrid.appendChild(container);
 
-        const peerInfo = {pc, videoElement: video, container, stream: null};
+        const peerInfo = {
+            pc,
+            videoElement: video,
+            container,
+            stream: null,
+            pendingCandidates: []
+        };
         peers.set(remoteId, peerInfo);
 
         if (localStream) {
