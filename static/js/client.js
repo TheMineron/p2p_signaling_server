@@ -136,12 +136,11 @@
                     });
                 });
                 updateParticipantsUI();
-                for (const p of msg.participants) {
-                    await createPeerConnection(p.id, true);
-                }
                 break;
 
             case 'participant_joined':
+                if (msg.participant.id === currentParticipantId) break;
+
                 participantsInfo.set(msg.participant.id, {
                     id: msg.participant.id,
                     name: msg.participant.name,
